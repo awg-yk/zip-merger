@@ -85,7 +85,7 @@
     mergeBtn.disabled = true;
     clearBtn.disabled = true;
     try {
-      await mergePdfsFromZips(zipFiles);
+      await flattenPdfsFromZips(zipFiles);
     } catch (err) {
       console.error(err);
       setStatus(`エラーが発生しました: ${err.message || err}`);
@@ -95,12 +95,9 @@
     }
   });
 
-  async function mergePdfsFromZips(zips) {
-    const { PDFDocument } = PDFLib;
-    const mergedPdf = await PDFDocument.create();
-
+  async function flattenPdfsFromZips(zips) {
     // すべてのZIPから、ZIPの区別なくPDFを1つのフォルダに集めたものとして扱い、
-    // ファイル名順（同名の場合は元のファイル名で二次ソート）で結合する。
+    // ファイル名順で並べた上で、個々のPDFファイルのまま1つのZIPにまとめる。
     const allPdfEntries = [];
     for (let i = 0; i < zips.length; i++) {
       const zipFile = zips[i];
@@ -115,43 +112,53 @@
       });
     }
 
-    allPdfEntries.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-
-    let pdfCount = 0;
-    for (const { zipName, entry } of allPdfEntries) {
-      setStatus(`(${pdfCount + 1}/${allPdfEntries.length}) ${zipName} - ${entry.name} を結合中...`);
-      const pdfBytes = await entry.async('uint8array');
-      let srcDoc;
-      try {
-        srcDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-      } catch (err) {
-        console.warn(`スキップ: ${entry.name} を読み込めませんでした`, err);
-        continue;
-      }
-      const pageIndices = srcDoc.getPageIndices();
-      const copiedPages = await mergedPdf.copyPages(srcDoc, pageIndices);
-      copiedPages.forEach((page) => mergedPdf.addPage(page));
-      pdfCount++;
-    }
-
-    if (pdfCount === 0) {
+    if (allPdfEntries.length === 0) {
       setStatus('PDFファイルが見つかりませんでした。');
       return;
     }
 
-    setStatus(`${pdfCount} 個のPDFを結合しています...`);
-    const mergedBytes = await mergedPdf.save();
-    const blob = new Blob([mergedBytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
+    allPdfEntries.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+    const outputZip = new JSZip();
+    const usedNames = new Set();
+
+    for (let i = 0; i < allPdfEntries.length; i++) {
+      const { zipName, entry, name } = allPdfEntries[i];
+      setStatus(`(${i + 1}/${allPdfEntries.length}) ${zipName} - ${entry.name} を格納中...`);
+      const pdfBytes = await entry.async('uint8array');
+      outputZip.file(uniqueName(name, usedNames), pdfBytes);
+    }
+
+    setStatus('ZIPファイルを作成しています...');
+    const zipBytes = await outputZip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBytes);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'merged.pdf';
+    a.download = 'merged_pdfs.zip';
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
 
-    setStatus(`完了しました。${pdfCount} 個のPDFを結合しました。`);
+    setStatus(`完了しました。${allPdfEntries.length} 個のPDFを1つのZIPにまとめました。`);
+  }
+
+  function uniqueName(name, usedNames) {
+    if (!usedNames.has(name)) {
+      usedNames.add(name);
+      return name;
+    }
+    const dot = name.lastIndexOf('.');
+    const stem = dot === -1 ? name : name.slice(0, dot);
+    const ext = dot === -1 ? '' : name.slice(dot);
+    let n = 2;
+    let candidate = `${stem}_${n}${ext}`;
+    while (usedNames.has(candidate)) {
+      n++;
+      candidate = `${stem}_${n}${ext}`;
+    }
+    usedNames.add(candidate);
+    return candidate;
   }
 
   refreshList();

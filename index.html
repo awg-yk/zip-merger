@@ -9,8 +9,8 @@
 <body>
   <main>
     <h1>ZIP PDF Merger</h1>
-    <p class="desc">複数のZIPファイルをアップロードすると、中に含まれるPDFをすべて抽出し、1つのフォルダにまとめたものとして1つのPDFに結合してダウンロードできます。<br>
-    結合順序：ZIPの区別なく、ファイル名順。すべての処理はブラウザ内で完結し、サーバーへの送信は行われません。</p>
+    <p class="desc">複数のZIPファイルをアップロードすると、中に含まれるPDFをすべて抽出し、ZIPの区別なく1つのフォルダにまとめた状態（1つのZIP）でダウンロードできます。PDFファイル自体は結合されず、個別のファイルのままです。<br>
+    並び順：ファイル名順。すべての処理はブラウザ内で完結し、サーバーへの送信は行われません。</p>
 
     <div id="dropzone" class="dropzone">
       <p>ここにZIPファイルをドラッグ&ドロップ<br>またはクリックして選択</p>
@@ -20,7 +20,7 @@
     <ul id="fileList" class="file-list"></ul>
 
     <div class="actions">
-      <button id="mergeBtn" disabled>PDFを結合してダウンロード</button>
+      <button id="mergeBtn" disabled>PDFをまとめてダウンロード</button>
       <button id="clearBtn" disabled>クリア</button>
     </div>
 
@@ -32,7 +32,6 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
