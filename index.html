@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZIP PDF Merger</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <h1>ZIP PDF Merger</h1>
+    <p class="desc">複数のZIPファイルをアップロードすると、中に含まれるPDFをすべて抽出し、1つのPDFに結合してダウンロードできます。<br>
+    結合順序：ZIPのアップロード順 → ZIP内のファイル名順。すべての処理はブラウザ内で完結し、サーバーへの送信は行われません。</p>
+
+    <div id="dropzone" class="dropzone">
+      <p>ここにZIPファイルをドラッグ&ドロップ<br>またはクリックして選択</p>
+      <input type="file" id="fileInput" accept=".zip" multiple hidden>
+    </div>
+
+    <ul id="fileList" class="file-list"></ul>
+
+    <div class="actions">
+      <button id="mergeBtn" disabled>PDFを結合してダウンロード</button>
+      <button id="clearBtn" disabled>クリア</button>
+    </div>
+
+    <div id="status" class="status" role="status"></div>
+  </main>
+
+  <footer>
+    <p><a href="https://github.com/awg-yk/zip-merger" target="_blank" rel="noopener">GitHub</a></p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
