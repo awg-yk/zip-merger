@@ -98,32 +98,40 @@
   async function mergePdfsFromZips(zips) {
     const { PDFDocument } = PDFLib;
     const mergedPdf = await PDFDocument.create();
-    let pdfCount = 0;
 
+    // すべてのZIPから、ZIPの区別なくPDFを1つのフォルダに集めたものとして扱い、
+    // ファイル名順（同名の場合は元のファイル名で二次ソート）で結合する。
+    const allPdfEntries = [];
     for (let i = 0; i < zips.length; i++) {
       const zipFile = zips[i];
       setStatus(`(${i + 1}/${zips.length}) ${zipFile.name} を展開中...`);
       const zip = await JSZip.loadAsync(zipFile);
+      const pdfEntries = Object.values(zip.files).filter(
+        (entry) => !entry.dir && entry.name.toLowerCase().endsWith('.pdf')
+      );
+      const baseName = (path) => path.split('/').pop();
+      pdfEntries.forEach((entry) => {
+        allPdfEntries.push({ zipName: zipFile.name, entry, name: baseName(entry.name) });
+      });
+    }
 
-      const pdfEntries = Object.values(zip.files)
-        .filter((entry) => !entry.dir && entry.name.toLowerCase().endsWith('.pdf'))
-        .sort((a, b) => a.name.localeCompare(b.name));
+    allPdfEntries.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
-      for (const entry of pdfEntries) {
-        setStatus(`(${i + 1}/${zips.length}) ${zipFile.name} - ${entry.name} を結合中...`);
-        const pdfBytes = await entry.async('uint8array');
-        let srcDoc;
-        try {
-          srcDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
-        } catch (err) {
-          console.warn(`スキップ: ${entry.name} を読み込めませんでした`, err);
-          continue;
-        }
-        const pageIndices = srcDoc.getPageIndices();
-        const copiedPages = await mergedPdf.copyPages(srcDoc, pageIndices);
-        copiedPages.forEach((page) => mergedPdf.addPage(page));
-        pdfCount++;
+    let pdfCount = 0;
+    for (const { zipName, entry } of allPdfEntries) {
+      setStatus(`(${pdfCount + 1}/${allPdfEntries.length}) ${zipName} - ${entry.name} を結合中...`);
+      const pdfBytes = await entry.async('uint8array');
+      let srcDoc;
+      try {
+        srcDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+      } catch (err) {
+        console.warn(`スキップ: ${entry.name} を読み込めませんでした`, err);
+        continue;
       }
+      const pageIndices = srcDoc.getPageIndices();
+      const copiedPages = await mergedPdf.copyPages(srcDoc, pageIndices);
+      copiedPages.forEach((page) => mergedPdf.addPage(page));
+      pdfCount++;
     }
 
     if (pdfCount === 0) {
